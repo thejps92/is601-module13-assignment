@@ -1,10 +1,14 @@
 import os
 
 import pytest
+from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
+import main
+
 from app.database import Base
+from app.database import get_db
 
 
 def _get_test_database_url() -> str | None:
@@ -44,3 +48,14 @@ def db_session(test_engine):
             session.execute(table.delete())
         session.commit()
         session.close()
+
+
+@pytest.fixture
+def client(db_session):
+    def _override_get_db():
+        yield db_session
+
+    main.app.dependency_overrides[get_db] = _override_get_db
+    with TestClient(main.app) as test_client:
+        yield test_client
+    main.app.dependency_overrides.clear()

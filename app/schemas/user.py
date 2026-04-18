@@ -10,6 +10,11 @@ class UserCreate(BaseModel):
     password: str = Field(min_length=6, max_length=128)
 
 
+class UserLogin(BaseModel):
+    username: str = Field(min_length=1, max_length=50)
+    password: str = Field(min_length=6, max_length=128)
+
+
 class UserRead(BaseModel):
     id: UUID
     username: str

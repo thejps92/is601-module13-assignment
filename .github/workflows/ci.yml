@@ -95,8 +95,8 @@ jobs:
         with:
           push: true
           tags: |
-            ${{ secrets.DOCKERHUB_USERNAME }}/is601-module11-assignment:latest
-            ${{ secrets.DOCKERHUB_USERNAME }}/is601-module11-assignment:${{ github.sha }}
+            ${{ secrets.DOCKERHUB_USERNAME }}/is601-module12-assignment:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/is601-module12-assignment:${{ github.sha }}
           platforms: linux/amd64,linux/arm64
-          cache-from: type=registry,ref=${{ secrets.DOCKERHUB_USERNAME }}/is601-module11-assignment:cache
+          cache-from: type=registry,ref=${{ secrets.DOCKERHUB_USERNAME }}/is601-module12-assignment:cache
           cache-to: type=inline,mode=max

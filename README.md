@@ -1,6 +1,8 @@
 # FastAPI Calculator Application
 
-## Overview
+A FastAPI project that includes a simple calculator UI + API, plus back-end endpoints for user registration/login and calculation CRUD.
+
+## 1. Overview
 This project is a web calculator built with FastAPI.
 
 It includes:
@@ -8,17 +10,55 @@ It includes:
 - REST API endpoints for add, subtract, multiply, and divide
 - Input validation and structured error handling
 - Logging for successful operations and errors
+- User registration and login endpoints
+- Calculation CRUD endpoints (BREAD)
 - A minimal secure user model (SQLAlchemy + Pydantic)
 - A Calculation model + schemas (SQLAlchemy + Pydantic)
-- An factory for selecting calculation logic (Add/Sub/Multiply/Divide)
+- A factory for selecting calculation logic (Add/Sub/Multiply/Divide)
 - Password hashing + verification (bcrypt via Passlib)
 - Automated testing with unit, integration, and end-to-end tests
 - Docker support and GitHub Actions CI/CD
 
-## Project Structure
+## 2. API Endpoints
+
+### OpenAPI
+- Swagger UI: http://127.0.0.1:8000/docs
+- ReDoc: http://127.0.0.1:8000/redoc
+
+### Users
+- `POST /users/register`
+  - Body (example):
+    ```json
+    {"username":"alice","email":"alice@example.com","password":"Password123"}
+    ```
+- `POST /users/login`
+  - Body (example):
+    ```json
+    {"username":"alice","password":"Password123"}
+    ```
+
+### Calculations (BREAD)
+- `POST /calculations`
+- `GET /calculations`
+- `GET /calculations/{id}`
+- `PUT /calculations/{id}`
+- `DELETE /calculations/{id}`
+
+Example create body:
+```json
+{"a":10,"b":5,"type":"Add"}
+```
+
+### Calculator Operations
+- `POST /add`
+- `POST /subtract`
+- `POST /multiply`
+- `POST /divide`
+
+## 3. Project Structure
 
 ```text
-is601-module11-assignment/
+is601-module12-assignment/
 ├── app/
 │   ├── auth/
 │   │   ├── __init__.py
@@ -58,8 +98,10 @@ is601-module11-assignment/
 │   ├── integration/
 │   │   ├── conftest.py
 │   │   ├── test_calculation_database.py
+│   │   ├── test_calculation_routes.py
 │   │   ├── test_fastapi_calculator.py
-│   │   └── test_user_database.py
+│   │   ├── test_user_database.py
+│   │   └── test_user_routes.py
 │   └── e2e/
 │       ├── conftest.py
 │       └── test_e2e.py
@@ -72,54 +114,48 @@ is601-module11-assignment/
 └── README.md
 ```
 
-## Prerequisites
+## 4. Prerequisites
 - Python 3.10 to 3.12 recommended
 - Docker Desktop
 
-## Run Locally (PowerShell)
+## 5. Run Locally (PowerShell)
 
-### 1. Set up environment
+### Set up environment
 
 ```powershell
-python -m venv venv
-.\venv\Scripts\Activate.ps1
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
 playwright install
 ```
 
-### 2. Start application
+### Start application
 
 ```powershell
 uvicorn main:app --reload
 ```
 
-### 3. Open in browser
+### Open in browser
 - http://127.0.0.1:8000
 
-## Run with Docker
+## 6. Run with Docker
 
-### 1. Build and start
+### Build and start
 
 ```powershell
 docker compose up --build
 ```
 
-### 2. Run in background (optional)
-
-```powershell
-docker compose up --build -d
-```
-
-### 3. Open in browser
+### Open in browser
 - http://127.0.0.1:8000
 
-### 4. Stop containers
+### Stop containers
 
 ```powershell
 docker compose down
 ```
 
-## Run Tests Locally (Brief)
+## 7. Run Tests Locally
 All commands below assume your virtual environment is activated.
 
 ### Unit tests
@@ -128,7 +164,7 @@ python -m pytest tests\unit -q
 ```
 
 ### Integration tests (requires a real Postgres database)
-Integration tests require `DATABASE_URL`.
+Integration tests require `DATABASE_URL` and an accessible Postgres instance.
 
 Example:
 ```powershell
@@ -138,15 +174,23 @@ python -m pytest tests\integration -q
 
 Note: if `DATABASE_URL` is not set, integration tests are skipped.
 
+If you want a quick local Postgres for integration tests:
+```powershell
+docker compose up -d db
+$env:DATABASE_URL = "postgresql://postgres:postgres@localhost:5432/fastapi_db"
+python -m pytest tests\integration -q
+docker compose down
+```
+
 ### End-to-end (E2E) tests
 ```powershell
 python -m pytest tests\e2e -q
 ```
 
-## CI/CD
+## 8. CI/CD
 - GitHub Actions runs the pipeline on push and pull request events for main.
 - Stages: test, security scan, and deploy.
 - On successful deploy from main, a new Docker image is pushed to Docker Hub.
 
 Docker Hub repository:
-- https://hub.docker.com/r/jps92/is601-module11-assignment
+- https://hub.docker.com/r/jps92/is601-module12-assignment

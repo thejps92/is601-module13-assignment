@@ -1,12 +1,12 @@
 # FastAPI Calculator Application
 
-A FastAPI project that includes a simple calculator UI + API, plus back-end endpoints for user registration/login and calculation CRUD.
+A FastAPI project that includes calculator APIs, calculation persistence (BREAD), and JWT-based registration/login with template-based web pages.
 
 ## 1. Overview
 This project is a web calculator built with FastAPI.
 
 It includes:
-- A browser UI with two number inputs and operation buttons
+- Template-based web pages (Home/Login/Register/Dashboard)
 - REST API endpoints for add, subtract, multiply, and divide
 - Input validation and structured error handling
 - Logging for successful operations and errors
@@ -37,6 +37,28 @@ It includes:
     {"username":"alice","password":"Password123"}
     ```
 
+### JWT Auth
+- `POST /auth/register` (used by the web registration page)
+- `POST /register` (alias)
+  - Body (example):
+    ```json
+    {"username":"alice","email":"alice@example.com","password":"Password123","confirm_password":"Password123"}
+    ```
+  - Returns: `{ "access_token": "...", "token_type": "bearer" }`
+- `POST /auth/login` (used by the web login page)
+- `POST /login` (alias)
+  - Body (example):
+    ```json
+    {"username":"alice@example.com","password":"Password123"}
+    ```
+  - Returns: `{ "access_token": "...", "token_type": "bearer" }`
+
+### Web Pages
+- `GET /` (Home)
+- `GET /login`
+- `GET /register`
+- `GET /dashboard`
+
 ### Calculations (BREAD)
 - `POST /calculations`
 - `GET /calculations`
@@ -58,32 +80,45 @@ Example create body:
 ## 3. Project Structure
 
 ```text
-is601-module12-assignment/
+is601-module13-assignment/
 ├── app/
 │   ├── auth/
 │   │   ├── __init__.py
+│   │   ├── jwt.py
 │   │   └── security.py
 │   ├── models/
 │   │   ├── __init__.py
 │   │   ├── calculation.py
 │   │   └── user.py
 │   ├── operations/
-│   │   ├── factory.py
-│   │   └── __init__.py
+│   │   ├── __init__.py
+│   │   └── factory.py
 │   ├── schemas/
 │   │   ├── __init__.py
+│   │   ├── auth.py
 │   │   ├── calculation.py
+│   │   ├── token.py
 │   │   └── user.py
 │   ├── __init__.py
 │   ├── config.py
 │   ├── database.py
 │   └── database_init.py
+├── static/
+│   ├── css/
+│   │   └── style.css
+│   └── js/
+│       └── script.js
 ├── templates/
-│   └── index.html
+│   ├── dashboard.html
+│   ├── index.html
+│   ├── layout.html
+│   ├── login.html
+│   └── register.html
 ├── tests/
 │   ├── __init__.py
 │   ├── conftest.py
 │   ├── unit/
+│   │   ├── test_auth_schema.py
 │   │   ├── test_calculator.py
 │   │   ├── test_calculation_factory.py
 │   │   ├── test_calculation_model.py
@@ -91,6 +126,7 @@ is601-module12-assignment/
 │   │   ├── test_calculation_schema.py
 │   │   ├── test_database.py
 │   │   ├── test_database_init.py
+│   │   ├── test_jwt_helpers.py
 │   │   ├── test_main_api.py
 │   │   ├── test_security.py
 │   │   ├── test_user_model.py
@@ -104,10 +140,13 @@ is601-module12-assignment/
 │   │   └── test_user_routes.py
 │   └── e2e/
 │       ├── conftest.py
+│       ├── test_auth_e2e.py
+│       ├── test_dashboard_calculation_e2e.py
 │       └── test_e2e.py
 ├── .github/workflows/
 │   └── ci.yml
 ├── main.py
+├── pytest.ini
 ├── requirements.txt
 ├── Dockerfile
 ├── compose.yaml
@@ -123,10 +162,10 @@ is601-module12-assignment/
 ### Set up environment
 
 ```powershell
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
+python -m venv venv
+.\venv\Scripts\Activate.ps1
 pip install -r requirements.txt
-playwright install
+python -m playwright install
 ```
 
 ### Start application
@@ -193,4 +232,4 @@ python -m pytest tests\e2e -q
 - On successful deploy from main, a new Docker image is pushed to Docker Hub.
 
 Docker Hub repository:
-- https://hub.docker.com/r/jps92/is601-module12-assignment
+- https://hub.docker.com/r/jps92/is601-module13-assignment

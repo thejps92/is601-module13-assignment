@@ -12,7 +12,7 @@ def client():
 def test_root_returns_html(client):
     resp = client.get("/")
     assert resp.status_code == 200
-    assert "Hello World" in resp.text
+    assert "Welcome to the Calculations App" in resp.text
 
 
 def test_healthcheck(client):

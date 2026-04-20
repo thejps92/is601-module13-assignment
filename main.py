@@ -1,11 +1,15 @@
 # main.py
 
 from contextlib import asynccontextmanager
+import re
 from uuid import UUID
+from uuid import uuid4
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi import Depends, status
 from fastapi.responses import JSONResponse
+from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, Field, field_validator  # Use @validator for Pydantic 1.x
 from fastapi.exceptions import RequestValidationError
@@ -17,7 +21,10 @@ from app.database import get_db
 from app.database_init import init_db
 from app.models.calculation import Calculation
 from app.models.user import User
+from app.auth.jwt import create_access_token
+from app.schemas.auth import LoginRequest, RegisterRequest
 from app.schemas.calculation import CalculationCreate, CalculationRead
+from app.schemas.token import TokenResponse
 from app.schemas.user import UserCreate, UserLogin, UserRead
 from app.operations import add, subtract, multiply, divide  # Ensure correct import path
 import uvicorn
@@ -35,6 +42,9 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(lifespan=lifespan)
+
+# Mount the static files directory (required by templates/layout.html)
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # Setup templates directory
 templates = Jinja2Templates(directory="templates")
@@ -82,13 +92,28 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
         content={"error": error_messages},
     )
 
-@app.get("/")
+@app.get("/", response_class=HTMLResponse, tags=["web"], name="read_index")
 async def read_root(request: Request):
     """
     Serve the index.html template.
     """
     logger.info("Serving homepage")
     return templates.TemplateResponse("index.html", {"request": request})
+
+
+@app.get("/login", response_class=HTMLResponse, tags=["web"])
+async def login_page(request: Request):
+    return templates.TemplateResponse("login.html", {"request": request})
+
+
+@app.get("/register", response_class=HTMLResponse, tags=["web"])
+async def register_page(request: Request):
+    return templates.TemplateResponse("register.html", {"request": request})
+
+
+@app.get("/dashboard", response_class=HTMLResponse, tags=["web"])
+async def dashboard_page(request: Request):
+    return templates.TemplateResponse("dashboard.html", {"request": request})
 
 
 @app.get("/health")
@@ -99,6 +124,111 @@ async def healthcheck():
 # ------------------------------------------------------------------------------
 # User Endpoints
 # ------------------------------------------------------------------------------
+
+
+_USERNAME_SAFE_RE = re.compile(r"[^a-zA-Z0-9_.-]+")
+
+
+def _derive_unique_username(email: str, db: Session) -> str:
+    local_part = email.split("@", 1)[0]
+    base = _USERNAME_SAFE_RE.sub("_", local_part).strip("_")
+    if not base:
+        base = "user"
+
+    # Keep room for suffix to avoid exceeding the DB column limit (50).
+    base = base[:40]
+    candidate = base
+
+    counter = 0
+    while db.query(User).filter(User.username == candidate).first() is not None:
+        counter += 1
+        suffix = f"_{counter}"
+        candidate = f"{base[:50 - len(suffix)]}{suffix}"
+
+        # Safety fallback in pathological cases.
+        if counter > 9999:
+            rand = uuid4().hex[:6]
+            suffix = f"_{rand}"
+            candidate = f"{base[:50 - len(suffix)]}{suffix}"
+            break
+
+    return candidate
+
+
+@app.post(
+    "/register",
+    response_model=TokenResponse,
+    status_code=status.HTTP_201_CREATED,
+    tags=["auth"],
+)
+@app.post(
+    "/auth/register",
+    response_model=TokenResponse,
+    status_code=status.HTTP_201_CREATED,
+    tags=["auth"],
+)
+def register_jwt(payload: RegisterRequest, db: Session = Depends(get_db)):
+    # Duplicate email check
+    if db.query(User).filter(User.email == payload.email).first() is not None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Email already exists",
+        )
+
+    requested_username = (payload.username or "").strip() or None
+    if requested_username is not None:
+        if db.query(User).filter(User.username == requested_username).first() is not None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Username already exists",
+            )
+        username = requested_username
+    else:
+        username = _derive_unique_username(payload.email, db)
+    user = User.create(username=username, email=payload.email, password=payload.password)
+    db.add(user)
+
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Username or email already exists",
+        )
+
+    db.refresh(user)
+
+    access_token = create_access_token(subject=str(user.id))
+    return TokenResponse(access_token=access_token)
+
+
+@app.post(
+    "/login",
+    response_model=TokenResponse,
+    tags=["auth"],
+)
+@app.post(
+    "/auth/login",
+    response_model=TokenResponse,
+    tags=["auth"],
+)
+def login_jwt(payload: LoginRequest, db: Session = Depends(get_db)):
+    user = (
+        db.query(User)
+        .filter(or_(User.username == payload.username, User.email == payload.username))
+        .first()
+    )
+
+    if user is None or not user.verify(payload.password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid username or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    access_token = create_access_token(subject=str(user.id))
+    return TokenResponse(access_token=access_token)
 
 @app.post(
     "/users/register",

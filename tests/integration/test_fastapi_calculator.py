@@ -34,7 +34,7 @@ def test_root_api(client):
     """
     response = client.get('/')
     assert response.status_code == 200, f"Expected status code 200, got {response.status_code}"
-    assert "Hello World" in response.text, "Expected homepage content to include 'Hello World'"
+    assert "Welcome to the Calculations App" in response.text
 
 
 # ---------------------------------------------
